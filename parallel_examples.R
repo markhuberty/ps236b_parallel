@@ -156,7 +156,7 @@ mean(mbf.time)
 ## A practical example:
 ## Survey of Consumer Finances 2007
 ## 22k rows, 5.8k columns
-
+library(foreign)
 scf <- read.dta("scf2007short.dta") ## This is a big file and takes a bit to load
 
 
@@ -193,6 +193,7 @@ names(scf) <- c("age", "empl.status",
                 "save",
                 "save.adq.retire"
                 )
+scf <- scf[scf$inc.yr > 0,]
 
 ## Bootstrap the betas for the regression of
 ## age on income
@@ -202,8 +203,8 @@ lm.fun <- function(x, y){
   sample.vec <- sample(1:length(x), length(x), replace=TRUE)
   x.temp = x[sample.vec]
   y.temp = y[sample.vec]
-  lm.temp <- lm(y ~ x)
-  lm.beta <- lm$coefficients[2]
+  lm.temp <- lm(y.temp ~ x.temp)
+  lm.beta <- lm.temp$coefficients[2]
   return(lm.beta)
   
 }
@@ -217,7 +218,7 @@ boot.seq <- function(N, x, y, p.quantiles=c(0.025, 0.975)){
         
   })
 
-  return(mean(out), quantile(out, p.quantiles))
+  return(c(mean(out), quantile(out, p.quantiles)))
 
 }
 
@@ -230,7 +231,7 @@ boot.foreach.par <-
 
     }
 
-    return(mean(out), quantile(out, p.quantiles))
+    return(c(mean(out), quantile(out, p.quantiles)))
 
   }
 
@@ -243,27 +244,82 @@ boot.snow.par <-
 
     })
 
-    return(mean(out), quantile(out, p.quantiles))
+    return(c(mean(out), quantile(out, p.quantiles)))
 
   }
+
+## Plot the data:
+plot(log10(scf$inc.yr) ~ scf$age)
 
 ## Time it:
 clusterSetupRNG(cl)
 clusterExport(cl, c("lm.fun", "scf"))
-time.lmboot.seq <- system.time(boot.seq(1000, scf$age,
-                                        scf$inc.normal
+
+time.lmboot.seq <- system.time(boot.seq(1000,
+                                        scf$age,
+                                        log10(scf$inc.yr)
                                         )
                                )
+
 time.lmboot.foreach <- system.time(boot.foreach.par(1000,
                                                     scf$age,
-                                                    scf$inc.normal
+                                                    log10(scf$inc.yr)
                                                     )
                                    )
-time.lmboot.snow <- system.time(boot.snow.par(1000, scf$age,
-                                              scf$inc.normal,
+
+time.lmboot.snow <- system.time(boot.snow.par(1000,
+                                              scf$age,
+                                              log10(scf$inc.yr),
                                               cluster=cl
                                               )
                                 )
+
 print(time.lmboot.seq)
 print(time.lmboot.foreach)
 print(time.lmboot.snow)
+
+
+## Implicit parallelism
+## NOTE: pnmath requires gcc-4.2+. Most Macs
+## only come w/ the Apple xCode version 4.0.1 or so (maybe
+## later for Snow Leopard / Lion?) This code works on my
+## linux box...
+## Taken from  http://rdav.nics.tennessee.edu/system/files/tgcc-r-handout-2011-07-06.pdf
+v1 <- runif(1000)
+v2 <- runif(100000000)
+system.time(qtukey(v1,2,3))
+system.time(exp(v2))
+system.time(sqrt(v2))
+
+library(pnmath)
+system.time(qtukey(v1,2,3))
+system.time(exp(v2))
+system.time(sqrt(v2))
+
+## Timings on 4 cores:
+## > v1 <- runif(1000)
+## > v2 <- runif(100000000)
+
+## > system.time(qtukey(v1,2,3))
+##    user  system elapsed 
+##  19.640   0.000  19.643 
+## > system.time(exp(v2))
+##    user  system elapsed 
+##   4.200   0.290   4.484 
+## > system.time(sqrt(v2))
+##    user  system elapsed 
+##   2.030   0.220   2.248
+
+## > library(pnmath)
+## > system.time(qtukey(v1,2,3))
+##    user  system elapsed 
+##  19.440   0.000   4.996 
+## > system.time(exp(v2))
+##    user  system elapsed 
+##   4.930   0.380   1.329 
+## > system.time(sqrt(v2)
+## + )
+##    user  system elapsed 
+##   2.790   0.310   0.785 
+
+            
