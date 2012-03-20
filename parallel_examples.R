@@ -26,7 +26,7 @@ fib.seq <- function(N){
   while(n.count < N)
     {
 
-      if(n.count == 0 | n.count == 1)
+      if(n.count < 2)
         {
 
           fib.vec <- append(fib.vec, n.count)
@@ -51,14 +51,14 @@ fib.par <- function(N){
   n.vec <- 1:N
   fib.vec <- foreach(i=n.vec, .combine=c) %dopar% {
 
-    if(i == 0 | i == 1)
+    if(i < 2)
       {
         
         return(i)
         
       }else{
         
-        out <- fib.seq(N)
+        out <- fib.seq(i)
         return(out[length(out)])
         
       }    
@@ -81,8 +81,10 @@ print(time.seq)
 print(time.par)
 
 
-## Let's try something more pedestrian: bootstrapping
+###################################################
+## Bootstrapping example
 
+## Define the core bootstrap function
 mean.boot.fun <- function(data.vec){
 
   sample.vec <- sample(1:length(data.vec), replace=TRUE)
@@ -91,6 +93,7 @@ mean.boot.fun <- function(data.vec){
 
 }
 
+## Define the sequential bootstrapper
 boot.seq <- function(N, data.in){
 
   boots <- sapply(1:N, function(x){
@@ -102,6 +105,7 @@ boot.seq <- function(N, data.in){
   return(c(mean(boots), quantile(boots, c(0.025, 0.975))))
 }
 
+## Define a parallel bootstrapper based on foreach()
 boot.foreach.par <- function(N, data.in){
 
   boots <- foreach(i=1:N, .combine=c) %dopar% {
@@ -113,6 +117,7 @@ boot.foreach.par <- function(N, data.in){
   return(c(mean(boots), quantile(boots, c(0.025, 0.975))))
 }
 
+## Define a parallel bootstrapper based on snow functions
 boot.snow.par <- function(N, data.in, cluster){
 
   boots <- parSapply(cluster, 1:N, function(x){
@@ -152,6 +157,9 @@ mean(mbf.time)
 ## parLapply() requires more work but is faster
 ## foreach() is a good choice when the internal function is
 ## time-intensive (less communication, more doing)
+
+########################################################
+## Bootstrapping example 2
 
 ## A practical example:
 ## Survey of Consumer Finances 2007
@@ -285,16 +293,16 @@ print(time.lmboot.snow)
 ## later for Snow Leopard / Lion?) This code works on my
 ## linux box...
 ## Taken from  http://rdav.nics.tennessee.edu/system/files/tgcc-r-handout-2011-07-06.pdf
-v1 <- runif(1000)
-v2 <- runif(100000000)
-system.time(qtukey(v1,2,3))
-system.time(exp(v2))
-system.time(sqrt(v2))
+## v1 <- runif(1000)
+## v2 <- runif(100000000)
+## system.time(qtukey(v1,2,3))
+## system.time(exp(v2))
+## system.time(sqrt(v2))
 
-library(pnmath)
-system.time(qtukey(v1,2,3))
-system.time(exp(v2))
-system.time(sqrt(v2))
+## library(pnmath)
+## system.time(qtukey(v1,2,3))
+## system.time(exp(v2))
+## system.time(sqrt(v2))
 
 ## Timings on 4 cores:
 ## > v1 <- runif(1000)
