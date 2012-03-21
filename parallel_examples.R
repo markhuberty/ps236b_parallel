@@ -4,7 +4,7 @@
 ## Author: Mark Huberty
 ## Date: 20 March 2012
 ###########################
-
+setwd("~/Documents/Technology/Documentation/parallel_slides")
 ## Parallel frameworks
 library(doMC)
 library(doMPI)
